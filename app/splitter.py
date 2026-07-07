@@ -1,4 +1,6 @@
-def split_text(text: str, chunk_size: int = 500, overlap: int = 100) -> list[dict]:
+from app.config import CHUNK_OVERLAP,CHUNK_SIZE
+
+def split_text(text: str, chunk_size: int = CHUNK_SIZE, overlap: int = CHUNK_OVERLAP) -> list[dict]:
     if chunk_size <= overlap:
         raise ValueError("chunk size must be greater than overlap")
     chunks = []
