@@ -4,6 +4,7 @@ from app.embeddings import EmbeddingService
 from app.vectore_store import SimpleVectorStore
 from app.prompt import build_rag_prompt
 from app.llm import LLMService
+from app.indexer import DocumentIndexer
 
 
 class RAGPipeline:
@@ -26,27 +27,11 @@ class RAGPipeline:
         self.embedding_service = EmbeddingService()
         self.vector_store = SimpleVectorStore()
         self.llm_service = LLMService()
-
-        self._build_index()
-
-    def _build_index(self) -> None:
-        """
-        Build the searchable document index.
-
-        Term:
-        - Index: prepared searchable storage of document chunks.
-        """
-        text = load_text_file(self.file_path)
-        chunks = split_text(text)
-
-        chunk_texts = [chunk["text"] for chunk in chunks]
-        embeddings = self.embedding_service.embed_texts(chunk_texts)
-
-        for chunk, embedding in zip(chunks, embeddings):
+        indexer = DocumentIndexer()
+        indexed_chunks = indexer.build(file_path)
+        for chunk in indexed_chunks:
             self.vector_store.add(
-                chunk_id=chunk["id"],
-                text=chunk["text"],
-                embedding=embedding
+                chunk_id=chunk["id"], text=chunk["text"], embedding=chunk["embedding"]
             )
 
     def ask(self, question: str, top_k: int = 3) -> dict:
@@ -56,19 +41,11 @@ class RAGPipeline:
         question_embedding = self.embedding_service.embed_text(question)
 
         retrieved_chunks = self.vector_store.search(
-            query_embedding=question_embedding,
-            top_k=top_k
+            query_embedding=question_embedding, top_k=top_k
         )
 
-        prompt = build_rag_prompt(
-            question=question,
-            retrieved_chunks=retrieved_chunks
-        )
+        prompt = build_rag_prompt(question=question, retrieved_chunks=retrieved_chunks)
 
         answer = self.llm_service.generate_answer(prompt)
 
-        return {
-            "question": question,
-            "answer": answer,
-            "sources": retrieved_chunks
-        }
+        return {"question": question, "answer": answer, "sources": retrieved_chunks}
