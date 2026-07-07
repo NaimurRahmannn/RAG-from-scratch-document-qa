@@ -1,6 +1,6 @@
 
 
-from app.vector_store import SimpleVectorStore
+from app.chroma_vector_store import ChromaVectorStore
 from app.prompt import build_rag_prompt
 from app.llm import LLMService
 from app.indexer import DocumentIndexer
@@ -26,7 +26,7 @@ class RAGPipeline:
     def __init__(self, file_path: str):
         self.file_path = file_path
 
-        self.vector_store = SimpleVectorStore()
+        self.vector_store = ChromaVectorStore()
         self.llm_service = LLMService()
         self.retriever = Retriever(self.vector_store)
         indexer = DocumentIndexer()

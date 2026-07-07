@@ -18,10 +18,5 @@ def main():
     print("\nAnswer:")
     print(result["answer"])
 
-    print("\nSources:")
-    for source in result["sources"]:
-        print(f"- {source['id']} | score: {source['score']:.4f}")
-
-
 if __name__ == "__main__":
     main()
