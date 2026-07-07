@@ -9,7 +9,7 @@ def main():
 
     question = sys.argv[1]
 
-    rag = RAGPipeline(file_path="data/sample.txt")
+    rag = RAGPipeline(file_path="data/sample.pdf")
     result = rag.ask(question)
 
     print("\nQuestion:")

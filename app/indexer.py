@@ -1,6 +1,8 @@
 from app.loader import load_text_file
 from app.splitter import split_text
 from app.embeddings import EmbeddingService
+from app.loader import load_document
+
 
 
 class DocumentIndexer:
@@ -8,7 +10,7 @@ class DocumentIndexer:
         self.embedding_service = EmbeddingService()
 
     def build(self, file_path: str) -> list[dict]:
-        text = load_text_file(file_path)
+        text = load_document(file_path)
         chunks = split_text(text)
         chunks_texts = [chunk["text"] for chunk in chunks]
         embeddings = self.embedding_service.embed_texts(chunks_texts)

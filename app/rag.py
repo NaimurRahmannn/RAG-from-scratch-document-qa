@@ -1,6 +1,5 @@
-from app.loader import load_text_file
-from app.splitter import split_text
-from app.embeddings import EmbeddingService
+
+
 from app.vector_store import SimpleVectorStore
 from app.prompt import build_rag_prompt
 from app.llm import LLMService
