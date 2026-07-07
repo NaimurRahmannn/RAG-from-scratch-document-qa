@@ -1,3 +1,17 @@
+def _format_source_label(chunk: dict) -> str:
+    metadata = chunk.get("metadata") or {}
+    source_file = metadata.get("source_file")
+    page = metadata.get("page")
+
+    if source_file and page:
+        return f"{source_file} (page {page})"
+
+    if source_file:
+        return source_file
+
+    return chunk.get("id", "unknown source")
+
+
 def build_rag_prompt(question: str, retrieved_chunks: list[dict]) -> str:
     """
     Build a grounded RAG prompt.
@@ -10,7 +24,7 @@ def build_rag_prompt(question: str, retrieved_chunks: list[dict]) -> str:
 
     context = "\n\n".join(
         [
-            f"Source: {chunk['id']}\n{chunk['text']}"
+            f"Source: {_format_source_label(chunk)}\n{chunk['text']}"
             for chunk in retrieved_chunks
         ]
     )

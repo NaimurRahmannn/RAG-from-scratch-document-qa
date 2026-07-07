@@ -1,9 +1,6 @@
-
-
 from app.chroma_vector_store import ChromaVectorStore
 from app.prompt import build_rag_prompt
 from app.llm import LLMService
-from app.indexer import DocumentIndexer
 from app.config import TOP_K
 from app.retriever import Retriever
 
@@ -23,18 +20,10 @@ class RAGPipeline:
     8. Generate answer
     """
 
-    def __init__(self, file_path: str):
-        self.file_path = file_path
-
+    def __init__(self):
         self.vector_store = ChromaVectorStore()
         self.llm_service = LLMService()
         self.retriever = Retriever(self.vector_store)
-        indexer = DocumentIndexer()
-        indexed_chunks = indexer.build(file_path)
-        for chunk in indexed_chunks:
-            self.vector_store.add(
-                chunk_id=chunk["id"], text=chunk["text"], embedding=chunk["embedding"]
-            )
 
     def ask(self, question: str, top_k: int = TOP_K) -> dict:
         """
@@ -44,6 +33,11 @@ class RAGPipeline:
             question=question,
             top_k=top_k,
         )
+
+        if not retrieved_chunks:
+            raise ValueError(
+                "No indexed documents were found. Run `python index.py` first."
+            )
 
         prompt = build_rag_prompt(question=question, retrieved_chunks=retrieved_chunks)
 

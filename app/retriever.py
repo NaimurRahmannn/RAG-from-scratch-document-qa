@@ -1,5 +1,5 @@
 from app.embeddings import EmbeddingService
-from app.vector_store import SimpleVectorStore
+from app.base_vector_store import VectorStore
 
 
 class Retriever:
@@ -10,7 +10,7 @@ class Retriever:
 
     def __init__(
         self,
-        vector_store: SimpleVectorStore,
+        vector_store: VectorStore,
     ):
         self.vector_store = vector_store
         self.embedding_service = EmbeddingService()
