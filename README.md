@@ -1,11 +1,11 @@
 # RAG From Scratch: Document Q&A
 
-A small Retrieval-Augmented Generation (RAG) project built in Python without LangChain. It indexes local documents, stores their embeddings in ChromaDB, retrieves the most relevant chunks for a question, and asks Gemini to answer using only the retrieved context.
+A small Retrieval-Augmented Generation (RAG) project built in Python without LangChain. It indexes local documents, stores their embeddings in ChromaDB, exposes a FastAPI endpoint for questions, and asks Gemini to answer using only the retrieved context.
 
 The current version supports `.txt` and `.pdf` files, keeps page/source metadata, and uses a two-step workflow:
 
 1. Index documents into a persistent local Chroma collection.
-2. Ask questions against the saved index.
+2. Run the FastAPI server and ask questions against the saved index.
 
 ## Features
 
@@ -16,6 +16,7 @@ The current version supports `.txt` and `.pdf` files, keeps page/source metadata
 - Character chunking with overlap.
 - Sentence Transformer embeddings using `sentence-transformers/all-MiniLM-L6-v2`.
 - Persistent ChromaDB vector storage in `./chroma_db`.
+- FastAPI endpoint for document Q&A.
 - Gemini answer generation through `google-genai`.
 - Grounded prompt that tells the model to answer only from retrieved context.
 - Source output with file name, page number, and similarity score.
@@ -25,7 +26,8 @@ The current version supports `.txt` and `.pdf` files, keeps page/source metadata
 
 ```text
 .
-+-- ask.py                     # Ask a question against the persisted Chroma index
++-- api.py                     # FastAPI app for document Q&A
++-- ask.py                     # Optional CLI for asking a question
 +-- index.py                   # Index .txt/.pdf files or directories into Chroma
 +-- requirements.txt           # Python dependencies
 +-- data/
@@ -63,15 +65,15 @@ For each document:
 
 Important: `index.py` clears the existing Chroma collection before adding the new index.
 
-### Asking
+### Asking Through The API
 
-`ask.py` loads the persisted Chroma collection and runs the query-time pipeline:
+`api.py` exposes the query-time pipeline through FastAPI:
 
 1. Embed the user question.
 2. Retrieve the top matching chunks from ChromaDB.
 3. Build a grounded prompt with the retrieved context.
 4. Send the prompt to Gemini.
-5. Print the answer and source list.
+5. Return the answer and source list as JSON.
 
 If the index is empty, the app asks you to run `python index.py` first.
 
@@ -139,23 +141,70 @@ Indexed 1 document(s) and 8 chunk(s).
 - data\sample.pdf
 ```
 
-### 2. Ask Questions
+### 2. Run The API Server
+
+```bash
+uvicorn api:app --reload
+```
+
+The API will be available at:
+
+```text
+http://127.0.0.1:8000
+```
+
+Interactive docs are available at:
+
+```text
+http://127.0.0.1:8000/docs
+```
+
+### 3. Ask Questions
+
+Send a request to `POST /ask`.
+
+```bash
+curl -X POST "http://127.0.0.1:8000/ask" \
+  -H "Content-Type: application/json" \
+  -d '{"question":"What is this document about?","top_k":3}'
+```
+
+PowerShell:
+
+```powershell
+Invoke-RestMethod `
+  -Uri "http://127.0.0.1:8000/ask" `
+  -Method Post `
+  -ContentType "application/json" `
+  -Body '{"question":"What is this document about?","top_k":3}'
+```
+
+Example response:
+
+```text
+{
+  "question": "What is this document about?",
+  "answer": "...",
+  "sources": [
+    {
+      "id": "sample_p1_c1",
+      "text": "...",
+      "score": 0.7421,
+      "metadata": {
+        "source_file": "sample.pdf",
+        "source_path": "...",
+        "page": 1,
+        "chunk": 1
+      }
+    }
+  ]
+}
+```
+
+You can still use the optional CLI if you want:
 
 ```bash
 python ask.py "What is this document about?"
-```
-
-Example output format:
-
-```text
-Question:
-What is this document about?
-
-Answer:
-...
-
-Sources:
-- sample.pdf page 1 | score: 0.7421
 ```
 
 ## Configuration
@@ -188,6 +237,7 @@ ChromaDB settings are defined in `app/chroma_vector_store.py`:
 - `app/prompt.py`: formats sources into a grounded prompt.
 - `app/llm.py`: sends prompts to Gemini.
 - `app/rag.py`: coordinates query-time retrieval and generation.
+- `api.py`: exposes the RAG pipeline through FastAPI.
 
 ## Smoke Tests
 
@@ -201,13 +251,13 @@ python test_pdf_loader.py
 You can also run a syntax check:
 
 ```bash
-python -m py_compile index.py ask.py app/*.py
+python -m py_compile api.py index.py ask.py app/*.py
 ```
 
 On PowerShell, use:
 
 ```powershell
-python -m py_compile index.py ask.py (Get-ChildItem app\*.py)
+python -m py_compile api.py index.py ask.py (Get-ChildItem app\*.py)
 ```
 
 ## Troubleshooting
@@ -243,7 +293,7 @@ On macOS/Linux, try:
 
 ```bash
 env -u HTTP_PROXY -u HTTPS_PROXY -u http_proxy -u https_proxy \
-  python ask.py "What is this document about?"
+  uvicorn api:app --reload
 ```
 
 On PowerShell, temporarily remove proxy variables for the current session:
@@ -253,7 +303,7 @@ Remove-Item Env:HTTP_PROXY -ErrorAction SilentlyContinue
 Remove-Item Env:HTTPS_PROXY -ErrorAction SilentlyContinue
 Remove-Item Env:http_proxy -ErrorAction SilentlyContinue
 Remove-Item Env:https_proxy -ErrorAction SilentlyContinue
-python ask.py "What is this document about?"
+uvicorn api:app --reload
 ```
 
 ## Current Limitations
@@ -261,15 +311,14 @@ python ask.py "What is this document about?"
 - The active query pipeline uses ChromaDB; the in-memory vector store is kept as a simple reference implementation.
 - Re-running `index.py` clears and rebuilds the Chroma collection.
 - PDF support depends on text extraction from `pypdf`; there is no OCR.
-- There is no web UI or API server yet.
+- There is no web UI yet.
 - There is no retry/backoff layer around Gemini requests.
 - The smoke tests are not a complete automated test suite.
 
 ## Roadmap Ideas
 
-- Add a CLI option for `top_k`.
 - Add incremental indexing without clearing the whole collection.
 - Add metadata filters for source file or page ranges.
 - Add OCR support for scanned PDFs.
 - Add unit tests for splitting, indexing, retrieval, and prompt generation.
-- Add a minimal web UI or API endpoint.
+- Add a minimal web UI.
